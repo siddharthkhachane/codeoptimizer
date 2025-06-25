@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Code Optimizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      min-height: 100vh;
+      background: linear-gradient(120deg, #f8fafc 0%, #e2e8f0 100%);
+      margin: 0;
+      font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 4px 18px rgba(60,72,88,0.11);
+      max-width: 430px;
+      width: 100%;
+      padding: 36px 32px 28px 32px;
+      margin: 32px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      transition: box-shadow 0.2s;
+    }
+    .container:hover {
+      box-shadow: 0 8px 26px rgba(60,72,88,0.18);
+    }
+    h2 {
+      text-align: center;
+      color: #1e293b;
+      margin-bottom: 6px;
+    }
+    label {
+      color: #334155;
+      font-size: 1rem;
+      font-weight: 500;
+      margin-bottom: 6px;
+      display: block;
+    }
+    input[type="file"],
+    input[type="text"],
+    textarea {
+      width: 100%;
+      margin-top: 4px;
+      margin-bottom: 10px;
+      padding: 9px 12px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 7px;
+      font-size: 1rem;
+      transition: border-color 0.18s;
+      background: #f1f5f9;
+      box-sizing: border-box;
+    }
+    input[type="file"] {
+      padding: 5px 2px;
+    }
+    input[type="text"]:focus, textarea:focus, input[type="file"]:focus {
+      border-color: #2563eb;
+      outline: none;
+      background: #f8fafc;
+    }
+    button {
+      background: linear-gradient(90deg, #2563eb 70%, #38bdf8 100%);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 11px 0;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(37,99,235,0.09);
+      transition: background 0.18s, box-shadow 0.18s;
+      width: 100%;
+      letter-spacing: 0.03em;
+    }
+    button:hover {
+      background: linear-gradient(90deg, #1e40af 70%, #0ea5e9 100%);
+      box-shadow: 0 4px 12px rgba(37,99,235,0.15);
+    }
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    hr {
+      border: none;
+      border-top: 1.5px solid #e2e8f0;
+      margin: 14px 0 10px 0;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 54px;
+      max-height: 180px;
+    }
+    .result-block {
+      background: #f1f5f9;
+      border-radius: 7px;
+      padding: 14px 12px;
+      font-family: 'Fira Mono', 'Consolas', monospace;
+      font-size: 0.9rem;
+      color: #334155;
+      min-height: 34px;
+      margin-top: 6px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1.2px solid #e0e7ef;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .error {
+      color: #dc2626;
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+    .success {
+      color: #059669;
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+    .loading {
+      color: #2563eb;
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+    .status-message {
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin: 8px 0;
+      font-size: 0.9rem;
+      border: 1px solid;
+    }
+    @media (max-width: 540px) {
+      .container { 
+        max-width: 98vw; 
+        padding: 18px 6vw 16px 6vw;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>AI Codebase Refactor</h2>
+    <div>
+      <label for="zipfile">Upload .zip file of codebase</label>
+      <input type="file" id="zipfile" accept=".zip" />
+    </div>
+    <div>
+      <label for="repoUrl">GitHub Repo URL</label>
+      <input type="text" id="repoUrl" placeholder="https://github.com/user/repo" />
+      <button id="uploadBtn" onclick="uploadCodebase()">Upload Codebase</button>
+    </div>
+    <div id="uploadStatus"></div>
+    <hr />
+    <div>
+      <label for="query">Enter query</label>
+      <textarea id="query" rows="3" placeholder="Type your AI query here (e.g., 'Optimize this code for performance', 'Find security issues', 'Suggest refactoring improvements')"></textarea>
+      <button id="queryBtn" onclick="submitQuery()" disabled>Ask AI</button>
+    </div>
+    <div class="result-block" id="result">Upload a codebase first to start analyzing...</div>
+  </div>
+  <script>
+    let isCodebaseUploaded = false;
+
+    function showStatus(message, type = 'info') {
+      const statusDiv = document.getElementById('uploadStatus');
+      statusDiv.innerHTML = `<div class="status-message ${type}">${message}</div>`;
+      
+      if (type === 'success') {
+        setTimeout(() => statusDiv.innerHTML = '', 5000);
+      }
+    }
+
+    function setButtonState(buttonId, disabled, text) {
+      const button = document.getElementById(buttonId);
+      button.disabled = disabled;
+      button.textContent = text;
+    }
+
+    function validateGitHubUrl(url) {
+      const githubRegex = /^https:\/\/github\.com\/[\w\-\.]+\/[\w\-\.]+\/?$/;
+      return githubRegex.test(url);
+    }
+
+    async function uploadCodebase() {
+      const file = document.getElementById('zipfile').files[0];
+      const repoUrl = document.getElementById('repoUrl').value.trim();
+      
+      if (!file && !repoUrl) {
+        showStatus("Please select a .zip file or enter a GitHub Repo URL.", 'error');
+        return;
+      }
+
+      if (repoUrl && !validateGitHubUrl(repoUrl)) {
+        showStatus("Please enter a valid GitHub repository URL (e.g., https://github.com/user/repo)", 'error');
+        return;
+      }
+
+      setButtonState('uploadBtn', true, 'Uploading...');
+      showStatus("Uploading and processing codebase...", 'loading');
+
+      try {
+        const formData = new FormData();
+        if (file) formData.append('zip', file);
+        if (repoUrl) formData.append('repo_url', repoUrl);
+
+        const response = await fetch('http://localhost:8080/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || `Server error: ${response.status}`);
+        }
+
+        isCodebaseUploaded = true;
+        setButtonState('queryBtn', false, 'Ask AI');
+        showStatus(`Upload successful! Processed ${data.num_files} code files.`, 'success');
+        document.getElementById('result').textContent = "Codebase uploaded successfully! You can now ask questions about your code.";
+        document.getElementById('result').className = "result-block success";
+
+        // Clear form
+        document.getElementById('zipfile').value = '';
+        document.getElementById('repoUrl').value = '';
+
+      } catch (error) {
+        console.error('Upload error:', error);
+        showStatus(`Upload failed: ${error.message}`, 'error');
+        document.getElementById('result').textContent = `Upload Error: ${error.message}`;
+        document.getElementById('result').className = "result-block error";
+      } finally {
+        setButtonState('uploadBtn', false, 'Upload Codebase');
+      }
+    }
+
+    async function submitQuery() {
+      const query = document.getElementById('query').value.trim();
+      
+      if (!query) {
+        showStatus("Please enter a query.", 'error');
+        return;
+      }
+
+      if (!isCodebaseUploaded) {
+        showStatus("Please upload a codebase first.", 'error');
+        return;
+      }
+
+      setButtonState('queryBtn', true, 'Analyzing...');
+      const resultDiv = document.getElementById('result');
+      resultDiv.textContent = "AI is analyzing your code...";
+      resultDiv.className = "result-block loading";
+
+      try {
+        const response = await fetch('http://localhost:8080/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || `Server error: ${response.status}`);
+        }
+
+        const result = data.result || data;
+        resultDiv.textContent = typeof result === 'object' ? JSON.stringify(result, null, 2) : result;
+        resultDiv.className = "result-block";
+
+      } catch (error) {
+        console.error('Query error:', error);
+        resultDiv.textContent = `Error: ${error.message}`;
+        resultDiv.className = "result-block error";
+      } finally {
+        setButtonState('queryBtn', false, 'Ask AI');
+      }
+    }
+
+    // Enable Enter key for query submission
+    document.getElementById('query').addEventListener('keydown', function(event) {
+      if (event.key === 'Enter' && event.ctrlKey) {
+        event.preventDefault();
+        submitQuery();
+      }
+    });
+
+    // Auto-resize textarea
+    document.getElementById('query').addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 180) + 'px';
+    });
+  </script>
+</body>
+</html>
