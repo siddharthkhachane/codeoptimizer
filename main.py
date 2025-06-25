@@ -127,7 +127,7 @@ class CodebaseProcessor:
         return self.vector_store
 
     def load_llm(self):
-        for name in ('llama3.2', 'llama2', 'codellama', 'mistral'):
+        for name in ('mistral', 'llama3.2', 'llama2', 'codellama'):
             try:
                 llm = Ollama(model=name, temperature=0.1, top_p=0.9, num_ctx=4096)
                 llm.invoke('ping')
