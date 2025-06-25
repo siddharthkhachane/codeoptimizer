@@ -183,8 +183,18 @@
     }
 
     function validateGitHubUrl(url) {
-      const githubRegex = /^https:\/\/github\.com\/[\w\-\.]+\/[\w\-\.]+\/?$/;
+      const githubRegex = /^https:\/\/github\.com\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+\/?$/;
       return githubRegex.test(url);
+    }
+
+    function validateZipFile(file) {
+      if (!file) return false;
+      
+      const validTypes = ['application/zip', 'application/x-zip', 'application/x-zip-compressed'];
+      const isValidType = validTypes.includes(file.type) || file.name.toLowerCase().endsWith('.zip');
+      const isValidSize = file.size > 0 && file.size < 100 * 1024 * 1024;
+      
+      return isValidType && isValidSize;
     }
 
     async function uploadCodebase() {
@@ -193,6 +203,11 @@
       
       if (!file && !repoUrl) {
         showStatus("Please select a .zip file or enter a GitHub Repo URL.", 'error');
+        return;
+      }
+
+      if (file && !validateZipFile(file)) {
+        showStatus("Please select a valid .zip file (max 100MB).", 'error');
         return;
       }
 
@@ -206,34 +221,69 @@
 
       try {
         const formData = new FormData();
-        if (file) formData.append('zip', file);
-        if (repoUrl) formData.append('repo_url', repoUrl);
+        
+        if (file) {
+          formData.append('file', file);
+          formData.append('upload_type', 'zip');
+        }
+        
+        if (repoUrl) {
+          formData.append('repo_url', repoUrl);
+          formData.append('upload_type', 'github');
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000);
 
         const response = await fetch('http://localhost:8080/upload', {
           method: 'POST',
-          body: formData
+          body: formData,
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json'
+          }
         });
 
-        const data = await response.json();
+        clearTimeout(timeoutId);
+
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          const text = await response.text();
+          throw new Error(`Server returned invalid JSON: ${text.substring(0, 100)}`);
+        }
         
         if (!response.ok) {
-          throw new Error(data.error || `Server error: ${response.status}`);
+          throw new Error(data.error || data.message || `Server error: ${response.status} - ${response.statusText}`);
         }
 
         isCodebaseUploaded = true;
         setButtonState('queryBtn', false, 'Ask AI');
-        showStatus(`Upload successful! Processed ${data.num_files} code files.`, 'success');
+        
+        const fileCount = data.num_files || data.fileCount || data.files_processed || 'unknown number of';
+        showStatus(`Upload successful! Processed ${fileCount} code files.`, 'success');
+        
         document.getElementById('result').textContent = "Codebase uploaded successfully! You can now ask questions about your code.";
         document.getElementById('result').className = "result-block success";
 
-        // Clear form
         document.getElementById('zipfile').value = '';
         document.getElementById('repoUrl').value = '';
 
       } catch (error) {
         console.error('Upload error:', error);
-        showStatus(`Upload failed: ${error.message}`, 'error');
-        document.getElementById('result').textContent = `Upload Error: ${error.message}`;
+        
+        let errorMessage;
+        if (error.name === 'AbortError') {
+          errorMessage = 'Upload timeout - please try with a smaller file or check your connection';
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Cannot connect to server. Please ensure the backend is running on localhost:8080';
+        } else {
+          errorMessage = error.message;
+        }
+        
+        showStatus(`Upload failed: ${errorMessage}`, 'error');
+        document.getElementById('result').textContent = `Upload Error: ${errorMessage}`;
         document.getElementById('result').className = "result-block error";
       } finally {
         setButtonState('uploadBtn', false, 'Upload Codebase');
@@ -259,32 +309,56 @@
       resultDiv.className = "result-block loading";
 
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+
         const response = await fetch('http://localhost:8080/query', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query })
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ query }),
+          signal: controller.signal
         });
 
-        const data = await response.json();
+        clearTimeout(timeoutId);
+
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          const text = await response.text();
+          throw new Error(`Server returned invalid JSON: ${text.substring(0, 100)}`);
+        }
         
         if (!response.ok) {
-          throw new Error(data.error || `Server error: ${response.status}`);
+          throw new Error(data.error || data.message || `Server error: ${response.status} - ${response.statusText}`);
         }
 
-        const result = data.result || data;
+        const result = data.result || data.response || data.answer || data;
         resultDiv.textContent = typeof result === 'object' ? JSON.stringify(result, null, 2) : result;
         resultDiv.className = "result-block";
 
       } catch (error) {
         console.error('Query error:', error);
-        resultDiv.textContent = `Error: ${error.message}`;
+        
+        let errorMessage;
+        if (error.name === 'AbortError') {
+          errorMessage = 'Query timeout - please try a simpler question';
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Cannot connect to server. Please ensure the backend is running';
+        } else {
+          errorMessage = error.message;
+        }
+        
+        resultDiv.textContent = `Error: ${errorMessage}`;
         resultDiv.className = "result-block error";
       } finally {
         setButtonState('queryBtn', false, 'Ask AI');
       }
     }
 
-    // Enable Enter key for query submission
     document.getElementById('query').addEventListener('keydown', function(event) {
       if (event.key === 'Enter' && event.ctrlKey) {
         event.preventDefault();
@@ -292,10 +366,17 @@
       }
     });
 
-    // Auto-resize textarea
     document.getElementById('query').addEventListener('input', function() {
       this.style.height = 'auto';
       this.style.height = Math.min(this.scrollHeight, 180) + 'px';
+    });
+
+    document.getElementById('zipfile').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (file && !validateZipFile(file)) {
+        showStatus("Invalid file. Please select a valid .zip file (max 100MB).", 'error');
+        this.value = '';
+      }
     });
   </script>
 </body>
