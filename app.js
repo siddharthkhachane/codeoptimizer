@@ -265,7 +265,7 @@ function splitDocuments(documents) {
 function setStatus(message, isError = false) {
   const statusEl = document.getElementById('uploadStatus');
   statusEl.textContent = message;
-  statusEl.style.color = isError ? '#f85149' : 'var(--muted)';
+  statusEl.style.color = isError ? '#f85149' : '#8b949e';
 }
 
 function addMessage(content, isUser = false) {
@@ -344,8 +344,7 @@ async function uploadCodebase() {
     window.openaiClient = openaiClient;
     isProcessed = true;
     document.getElementById('queryBtn').disabled = false;
-    setStatus(`Success! Processed ${files.length} files, ${chunks.length} chunks`);
-    addMessage('Codebase processed successfully! You can now ask questions about the code.');
+    setStatus(`Processed ${files.length} files`);
   } catch (error) {
     console.error('Upload error:', error);
     setStatus(`Error: ${error.message}`, true);
@@ -370,17 +369,16 @@ async function submitQuery() {
   queryInput.value = '';
   
   addMessage(query, true);
-  addMessage('Searching and generating answer...');
 
   try {
     const queryEmbedding = await window.openaiClient.createEmbedding(query);
     const results = searchVectorStore(queryEmbedding, 6);
-    const context = results.map(r => r.document.content).join('\n\n[SEPARATOR]\n\n');
+    const context = results.map(r => r.document.content).join('\n\n');
     
     const messages = [
       {
         role: 'system',
-        content: 'You are a helpful code assistant. Answer questions about the codebase based on the provided context. Be concise and accurate. If you cannot find the answer in the context, say so.'
+        content: 'You are a helpful code assistant. Answer questions about the codebase based on the provided context. Be concise and accurate. Format your response in markdown with proper code blocks when showing code.'
       },
       {
         role: 'user',
@@ -389,28 +387,20 @@ async function submitQuery() {
     ];
     
     const answer = await window.openaiClient.chat(messages);
-    
-    const chatWindow = document.getElementById('chatWindow');
-    chatWindow.removeChild(chatWindow.lastChild);
-    
     addMessage(answer);
     
-    const sourcesHtml = `<details class="sources"><summary>View ${results.length} source(s)</summary>${
-      results.map((r, i) => `<div class="source"><strong>${r.document.metadata.source}</strong><br/>${r.document.content.substring(0, 200)}...</div>`).join('')
+    const sourcesHtml = `<details class="sources"><summary>View ${results.length} sources</summary>${
+      results.map(r => `<div class="source"><strong>${r.document.metadata.source}</strong><br/>${r.document.content.substring(0, 200)}...</div>`).join('')
     }</details>`;
     
     const sourcesDiv = document.createElement('div');
     sourcesDiv.className = 'message bot';
     sourcesDiv.innerHTML = sourcesHtml;
-    chatWindow.appendChild(sourcesDiv);
+    document.getElementById('chatWindow').appendChild(sourcesDiv);
     
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+    document.getElementById('chatWindow').scrollTop = document.getElementById('chatWindow').scrollHeight;
   } catch (error) {
     console.error('Query error:', error);
-    const chatWindow = document.getElementById('chatWindow');
-    if (chatWindow.lastChild && chatWindow.lastChild.textContent.includes('Searching')) {
-      chatWindow.removeChild(chatWindow.lastChild);
-    }
     addMessage(`Error: ${error.message}`);
   } finally {
     queryBtn.disabled = false;
