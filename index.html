@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.1.0/github-markdown-light.min.css" crossorigin="anonymous" />
   <style>
-    /* Minimal styling adapted from your original UI */
     :root{
       --bg:#0b1220;
       --card:#0f1720;
@@ -15,61 +14,66 @@
       --text:#c9d1d9;
     }
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex}
-    .sidebar{width:220px;background:#07101a;padding:16px;border-right:1px solid rgba(255,255,255,0.03)}
-    .sidebar .logo{color:var(--accent);font-weight:700;margin-bottom:12px}
-    .main{flex:1;display:flex;flex-direction:column}
-    header{padding:14px 16px;background:var(--card);border-bottom:1px solid rgba(255,255,255,0.03)}
-    .upload{display:flex;gap:12px;padding:14px;background:var(--card);align-items:flex-end;border-bottom:1px solid rgba(255,255,255,0.03)}
-    .upload > div{flex:1;display:flex;flex-direction:column;gap:6px}
+    body{font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column}
+    .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+    header{padding:14px 16px;background:var(--card);border-bottom:1px solid rgba(255,255,255,0.03);font-size:16px;font-weight:600}
+    .upload{display:flex;gap:12px;padding:14px;background:var(--card);align-items:flex-end;border-bottom:1px solid rgba(255,255,255,0.03);flex-wrap:wrap}
+    .upload > div{flex:1;min-width:200px;display:flex;flex-direction:column;gap:6px}
     label{font-size:13px;color:var(--muted)}
-    input[type="text"], input[type="password"], button, textarea{padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text)}
-    button{background:var(--accent);color:#fff;border:none;cursor:pointer}
+    input[type="text"], input[type="password"], input[type="file"], button, textarea{padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text);font-size:14px}
+    button{background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500}
     button:disabled{opacity:0.5;cursor:not-allowed}
+    button:hover:not(:disabled){opacity:0.9}
     main.chat-window{flex:1;padding:16px;overflow:auto}
-    .message{max-width:80%;padding:12px 14px;border-radius:10px;margin-bottom:12px}
+    .message{max-width:80%;padding:12px 14px;border-radius:10px;margin-bottom:12px;line-height:1.5}
     .message.user{background:var(--accent);color:#fff;margin-left:auto}
     .message.bot{background:var(--card);color:var(--text)}
+    .message.bot code{background:#071a28;padding:2px 4px;border-radius:4px;font-size:13px}
+    .message.bot pre{background:#071a28;padding:8px;border-radius:6px;overflow-x:auto;margin:8px 0}
+    .message.bot pre code{background:none;padding:0}
     footer{display:flex;gap:8px;padding:12px;background:var(--card);border-top:1px solid rgba(255,255,255,0.03)}
-    textarea{flex:1;min-height:48px;resize:none}
+    textarea{flex:1;min-height:48px;resize:none;font-family:inherit}
     .status{font-size:13px;color:var(--muted);margin-top:6px}
-    .small{font-size:12px;color:var(--muted)}
-    code.kv{background:#071a28;padding:4px 6px;border-radius:6px}
+    .small{font-size:12px;color:var(--muted);margin-top:4px}
+    .sources{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);font-size:12px;color:var(--muted)}
+    .sources summary{cursor:pointer;margin-bottom:4px;font-weight:500}
+    .sources .source{background:#071a28;padding:8px;border-radius:4px;margin:4px 0;font-family:monospace;font-size:11px;overflow-x:auto}
+    .info-box{padding:12px;font-size:12px;color:var(--muted);background:var(--card);border-top:1px solid rgba(255,255,255,0.03)}
+    .info-box ul{margin-left:20px;margin-top:8px}
+    .info-box li{margin:4px 0}
   </style>
 </head>
 <body>
-  <div class="sidebar">
-    <div class="logo">Code Optimizer</div>
-    <div class="small">This runs fully in your browser. It uses OpenAI models. See notes below.</div>
-    <hr style="margin:12px 0;border-color:rgba(255,255,255,0.03)" />
-    <div class="small">Allowed file types: .py .js .ts .java .cpp .c .go .rb .php .cs .rs .swift .kt .html .css .vue .svelte .dart .r .m .pl .lua</div>
-  </div>
-
   <div class="main">
-    <header>Ask questions about an uploaded codebase (client side)</header>
+    <header>In-Browser Codebase QA with OpenAI</header>
 
     <div class="upload">
-      <div>
-        <label for="apiKey">OpenAI API key (gpt-4o-mini / embeddings)</label>
+      <div style="flex:2">
+        <label for="apiKey">OpenAI API Key (required)</label>
         <input id="apiKey" type="password" placeholder="sk-..." />
-        <div class="small">Warning: entering your key here exposes it to this browser page. Use a proxy server for production.</div>
+        <div class="small">Enter your OpenAI API key. It will only be used in your browser for API calls.</div>
       </div>
 
       <div>
-        <label for="zipfile">Upload .zip (preferred for reliability)</label>
+        <label for="zipfile">Upload .zip file</label>
         <input id="zipfile" type="file" accept=".zip" />
       </div>
 
       <div>
-        <label for="repoUrl">Or GitHub repo (main branch zip)</label>
+        <label for="repoUrl">Or GitHub repo URL</label>
         <input id="repoUrl" type="text" placeholder="https://github.com/user/repo" />
+      </div>
+
+      <div style="flex:0;min-width:auto">
+        <label style="opacity:0">Action</label>
         <button id="uploadBtn" onclick="uploadCodebase()">Process</button>
-        <div id="uploadStatus" class="status"></div>
       </div>
     </div>
 
+    <div id="uploadStatus" class="status" style="padding:8px 14px"></div>
+
     <main class="chat-window" id="chatWindow">
-      <div class="message bot">Upload a codebase to begin. Then ask questions below.</div>
+      <div class="message bot">Welcome! Enter your OpenAI API key, upload a codebase (ZIP or GitHub URL), then ask questions about the code.</div>
     </main>
 
     <footer>
@@ -77,21 +81,19 @@
       <button id="queryBtn" onclick="submitQuery()" disabled>Send</button>
     </footer>
 
-    <div style="padding:12px;font-size:12px;color:var(--muted)">
-      Notes:
+    <div class="info-box">
+      <strong>Note:</strong> This app runs entirely in your browser.
       <ul>
-        <li>Embedding model used: text-embedding-3-small. LLM used: gpt-4o-mini (as requested).</li>
-        <li>This client-only demo will expose your API key to the page. For production, run an API proxy to avoid leaking keys.</li>
-        <li>Large repositories can be slow or costly due to embedding requests. Keep repo size modest.</li>
+        <li>Uses OpenAI's text-embedding-3-small for embeddings and gpt-4o-mini for answering questions</li>
+        <li>Your API key is only used in your browser and never sent to any other server except OpenAI</li>
+        <li>Large repositories may take time to process and will use OpenAI API credits</li>
+        <li>Supported file types: .py .js .ts .java .cpp .c .go .rb .php .cs .rs .swift .kt .html .css .vue .svelte .dart .r .m .pl .lua and more</li>
       </ul>
     </div>
   </div>
 
-  <!-- Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/jszip@4.0.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-  <!-- App logic -->
-  <script type="module" src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
