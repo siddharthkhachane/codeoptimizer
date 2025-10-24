@@ -1,81 +1,97 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>AI Codebase Refactor</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.1.0/github-markdown-light.min.css" integrity="sha512-..." crossorigin="anonymous" />
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <meta charset="utf-8" />
+  <title>In-Browser Codebase QA (gpt-4o-mini)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.1.0/github-markdown-light.min.css" crossorigin="anonymous" />
   <style>
-    :root {
-      --sidebar-bg: #0d1117;
-      --sidebar-text: #c9d1d9;
-      --main-bg: #161b22;
-      --card-bg: #0d1117;
-      --text-primary: #c9d1d9;
-      --text-secondary: #8b949e;
-      --border: #30363d;
-      --accent: #58a6ff;
-      --accent-light: #79c0ff;
-      --shadow: rgba(0, 0, 0, 0.5);
+    /* Minimal styling adapted from your original UI */
+    :root{
+      --bg:#0b1220;
+      --card:#0f1720;
+      --accent:#58a6ff;
+      --muted:#8b949e;
+      --text:#c9d1d9;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { display: flex; height: 100vh; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: var(--main-bg); color: var(--text-primary); }
-    .sidebar { width: 240px; background: var(--sidebar-bg); display: flex; flex-direction: column; padding: 16px; border-right: 1px solid var(--border); }
-    .sidebar .logo { font-size: 1.5rem; font-weight: bold; color: var(--accent); margin-bottom: 24px; }
-    .sidebar nav a { display: block; color: var(--sidebar-text); text-decoration: none; padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; transition: background 0.2s; }
-    .sidebar nav a.active, .sidebar nav a:hover { background: #093c66; color: var(--accent-light); }
-    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    header { padding: 16px; background: var(--card-bg); border-bottom: 1px solid var(--border); font-size: 1.25rem; font-weight: 600; }
-    .upload-section { display: flex; gap: 16px; padding: 16px; background: var(--card-bg); border-bottom: 1px solid var(--border); }
-    .upload-section > div { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-    .upload-section label { font-size: 0.9rem; color: var(--text-secondary); }
-    .upload-section input, .upload-section button { padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--main-bg); color: var(--text-primary); }
-    .upload-section button { cursor: pointer; background: var(--accent); border: none; transition: background 0.2s; }
-    .upload-section button:hover { background: var(--accent-light); }
-    .status-message { margin-top: 8px; font-size: 0.9rem; }
-    main.chat-window { flex: 1; padding: 16px; overflow-y: auto; background: var(--main-bg); }
-    .message { max-width: 80%; margin-bottom: 12px; padding: 12px 16px; border-radius: 12px; box-shadow: 0 2px 6px var(--shadow); }
-    .message.user { align-self: flex-end; background: var(--accent); color: #fff; }
-    .message.bot { align-self: flex-start; background: var(--card-bg); color: var(--text-primary); }
-    .message .markdown-body { background: transparent; padding: 0; }
-    footer.input-area { display: flex; gap: 8px; padding: 12px 16px; background: var(--card-bg); border-top: 1px solid var(--border); }
-    footer textarea { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--main-bg); color: var(--text-primary); font-family: inherit; resize: none; min-height: 40px; }
-    footer button { padding: 0 16px; border: none; border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; transition: background 0.2s; }
-    footer button:disabled { opacity: 0.5; cursor: not-allowed; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex}
+    .sidebar{width:220px;background:#07101a;padding:16px;border-right:1px solid rgba(255,255,255,0.03)}
+    .sidebar .logo{color:var(--accent);font-weight:700;margin-bottom:12px}
+    .main{flex:1;display:flex;flex-direction:column}
+    header{padding:14px 16px;background:var(--card);border-bottom:1px solid rgba(255,255,255,0.03)}
+    .upload{display:flex;gap:12px;padding:14px;background:var(--card);align-items:flex-end;border-bottom:1px solid rgba(255,255,255,0.03)}
+    .upload > div{flex:1;display:flex;flex-direction:column;gap:6px}
+    label{font-size:13px;color:var(--muted)}
+    input[type="text"], input[type="password"], button, textarea{padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text)}
+    button{background:var(--accent);color:#fff;border:none;cursor:pointer}
+    button:disabled{opacity:0.5;cursor:not-allowed}
+    main.chat-window{flex:1;padding:16px;overflow:auto}
+    .message{max-width:80%;padding:12px 14px;border-radius:10px;margin-bottom:12px}
+    .message.user{background:var(--accent);color:#fff;margin-left:auto}
+    .message.bot{background:var(--card);color:var(--text)}
+    footer{display:flex;gap:8px;padding:12px;background:var(--card);border-top:1px solid rgba(255,255,255,0.03)}
+    textarea{flex:1;min-height:48px;resize:none}
+    .status{font-size:13px;color:var(--muted);margin-top:6px}
+    .small{font-size:12px;color:var(--muted)}
+    code.kv{background:#071a28;padding:4px 6px;border-radius:6px}
   </style>
 </head>
 <body>
   <div class="sidebar">
     <div class="logo">Code Optimizer</div>
-    <nav>
-      <a href="#" class="active">New conversation</a>
-      <a href="#">Home</a>
-      <a href="#">Spaces</a>
-    </nav>
+    <div class="small">This runs fully in your browser. It uses OpenAI models. See notes below.</div>
+    <hr style="margin:12px 0;border-color:rgba(255,255,255,0.03)" />
+    <div class="small">Allowed file types: .py .js .ts .java .cpp .c .go .rb .php .cs .rs .swift .kt .html .css .vue .svelte .dart .r .m .pl .lua</div>
   </div>
+
   <div class="main">
-    <header>Get suggestions on your code</header>
-    <div class="upload-section">
-      <div><label for="zipfile">Upload .zip file</label><input type="file" id="zipfile" accept=".zip" /></div>
-      <div><label for="repoUrl">GitHub Repo URL</label><input type="text" id="repoUrl" placeholder="https://github.com/user/repo" /><button id="uploadBtn" onclick="uploadCodebase()">Upload</button><div id="uploadStatus" class="status-message"></div></div>
+    <header>Ask questions about an uploaded codebase (client side)</header>
+
+    <div class="upload">
+      <div>
+        <label for="apiKey">OpenAI API key (gpt-4o-mini / embeddings)</label>
+        <input id="apiKey" type="password" placeholder="sk-..." />
+        <div class="small">Warning: entering your key here exposes it to this browser page. Use a proxy server for production.</div>
+      </div>
+
+      <div>
+        <label for="zipfile">Upload .zip (preferred for reliability)</label>
+        <input id="zipfile" type="file" accept=".zip" />
+      </div>
+
+      <div>
+        <label for="repoUrl">Or GitHub repo (main branch zip)</label>
+        <input id="repoUrl" type="text" placeholder="https://github.com/user/repo" />
+        <button id="uploadBtn" onclick="uploadCodebase()">Process</button>
+        <div id="uploadStatus" class="status"></div>
+      </div>
     </div>
-    <main class="chat-window" id="chatWindow"><div class="message bot markdown-body">Upload a codebase first to start analyzing...</div></main>
-    <footer class="input-area">
-      <textarea id="query" placeholder="Type your query..." onkeydown="if(event.ctrlKey&&event.key==='Enter'){submitQuery();}"></textarea>
+
+    <main class="chat-window" id="chatWindow">
+      <div class="message bot">Upload a codebase to begin. Then ask questions below.</div>
+    </main>
+
+    <footer>
+      <textarea id="query" placeholder="Ask about the code. Press Ctrl+Enter to send" onkeydown="if(event.ctrlKey&&event.key==='Enter'){submitQuery()}"></textarea>
       <button id="queryBtn" onclick="submitQuery()" disabled>Send</button>
     </footer>
+
+    <div style="padding:12px;font-size:12px;color:var(--muted)">
+      Notes:
+      <ul>
+        <li>Embedding model used: text-embedding-3-small. LLM used: gpt-4o-mini (as requested).</li>
+        <li>This client-only demo will expose your API key to the page. For production, run an API proxy to avoid leaking keys.</li>
+        <li>Large repositories can be slow or costly due to embedding requests. Keep repo size modest.</li>
+      </ul>
+    </div>
   </div>
-  <script>
-    let isCodebaseUploaded=false;
-    function showStatus(msg,type='info'){const el=document.getElementById('uploadStatus');el.textContent=msg;el.style.color=type==='error'?'#f97583':'#8b949e';}
-    function setButtonState(id,dis){document.getElementById(id).disabled=dis;}
-    function validateGitHubUrl(u){return/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/?$/.test(u);}
-    function validateZipFile(f){return f&&(f.type==='application/zip'||f.name.endsWith('.zip'))&&f.size<100*1024*1024;}
-    async function uploadCodebase(){const file=document.getElementById('zipfile').files[0],repo=document.getElementById('repoUrl').value.trim();if(!file&&!repo)return showStatus('Select a file or enter URL','error');if(file&&!validateZipFile(file))return showStatus('Invalid ZIP','error');if(repo&&!validateGitHubUrl(repo))return showStatus('Invalid URL','error');setButtonState('uploadBtn',true);showStatus('Uploading...','info');try{const fd=new FormData();if(file){fd.append('file',file);fd.append('upload_type','zip')}if(repo){fd.append('repo_url',repo);fd.append('upload_type','github')}const res=await fetch('http://localhost:8080/upload',{method:'POST',body:fd}),d=await res.json();if(!res.ok)throw new Error(d.error||d.message);isCodebaseUploaded=true;setButtonState('queryBtn',false);showStatus(`Processed ${d.num_files} files`,'info');updateLastBot('Ready! Ask anything about your code.')}catch(e){showStatus(e.message,'error')}finally{setButtonState('uploadBtn',false)} }
-    async function submitQuery(){const q=document.getElementById('query').value.trim();if(!q)return showStatus('Type a query first','error');if(!isCodebaseUploaded)return showStatus('Upload codebase first','error');setButtonState('queryBtn',true);appendMsg(q,'user');appendMsg('Analyzing...','bot');try{const res=await fetch('http://localhost:8080/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})}),d=await res.json();if(!res.ok)throw new Error(d.error||d.message);updateLastBot(d.result)}catch(e){updateLastBot('Error: '+e.message)}finally{setButtonState('queryBtn',false)}}
-    function appendMsg(txt,role){const win=document.getElementById('chatWindow'),el=document.createElement('div');el.className='message '+role+' markdown-body';el.innerHTML=marked.parse(txt);win.appendChild(el);win.scrollTop=win.scrollHeight;}
-    function updateLastBot(txt){const msgs=document.querySelectorAll('.message.bot'),last=msgs[msgs.length-1];last.innerHTML=marked.parse(txt);document.getElementById('chatWindow').scrollTop=document.getElementById('chatWindow').scrollHeight;}
-  </script>
+
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@4.0.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- App logic -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>
