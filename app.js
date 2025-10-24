@@ -166,15 +166,38 @@ async function downloadGitHubRepo(repoUrl) {
   const repo = parts[parts.length - 1];
 
   let zipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/main.zip`;
-  let response = await fetch(zipUrl);
+  
+  const corsProxies = [
+    'https://corsproxy.io/?',
+    'https://api.allorigins.win/raw?url=',
+    'https://cors-anywhere.herokuapp.com/'
+  ];
 
-  if (!response.ok) {
-    zipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/master.zip`;
-    response = await fetch(zipUrl);
+  let response = null;
+  let lastError = null;
+
+  for (const proxy of corsProxies) {
+    try {
+      const url = proxy + encodeURIComponent(zipUrl);
+      response = await fetch(url);
+      
+      if (!response.ok && proxy === corsProxies[0]) {
+        zipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/master.zip`;
+        const masterUrl = proxy + encodeURIComponent(zipUrl);
+        response = await fetch(masterUrl);
+      }
+      
+      if (response.ok) {
+        break;
+      }
+    } catch (e) {
+      lastError = e;
+      continue;
+    }
   }
 
-  if (!response.ok) {
-    throw new Error(`Failed to download repository: ${response.statusText}`);
+  if (!response || !response.ok) {
+    throw new Error(`Failed to download repository. Please try uploading as a ZIP file instead. ${lastError?.message || ''}`);
   }
 
   const blob = await response.blob();
@@ -378,7 +401,7 @@ async function submitQuery() {
     const messages = [
       {
         role: 'system',
-        content: 'You are a helpful code assistant. Answer questions about the codebase based on the provided context. Be concise and accurate. Format your response in markdown with proper code blocks when showing code.'
+        content: 'You are a helpful code assistant. Answer questions about the codebase based on the provided context. Be concise and accurate. Format your response in markdown with proper code blocks when showing code. Never use dashes or hyphens for lists or formatting, use bullet points or numbers instead.'
       },
       {
         role: 'user',
