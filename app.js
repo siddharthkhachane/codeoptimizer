@@ -137,8 +137,11 @@ function isBinaryFile(content) {
 }
 
 async function extractZipFromFile(file) {
-  const JSZip = window.JSZip;
-  const zip = await JSZip.loadAsync(file);
+  if (!window.JSZip) {
+    throw new Error('JSZip library not loaded. Please refresh the page.');
+  }
+  
+  const zip = await window.JSZip.loadAsync(file);
   const files = [];
 
   for (const [path, zipEntry] of Object.entries(zip.files)) {
@@ -165,42 +168,32 @@ async function downloadGitHubRepo(repoUrl) {
   const owner = parts[parts.length - 2];
   const repo = parts[parts.length - 1];
 
-  let zipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/main.zip`;
-  
-  const corsProxies = [
-    'https://corsproxy.io/?',
-    'https://api.allorigins.win/raw?url=',
-    'https://cors-anywhere.herokuapp.com/'
-  ];
-
+  const branches = ['main', 'master'];
   let response = null;
-  let lastError = null;
+  let blob = null;
 
-  for (const proxy of corsProxies) {
+  for (const branch of branches) {
     try {
-      const url = proxy + encodeURIComponent(zipUrl);
+      const zipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/${branch}.zip`;
+      const corsProxy = 'https://corsproxy.io/?';
+      const url = corsProxy + encodeURIComponent(zipUrl);
+      
       response = await fetch(url);
       
-      if (!response.ok && proxy === corsProxies[0]) {
-        zipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/master.zip`;
-        const masterUrl = proxy + encodeURIComponent(zipUrl);
-        response = await fetch(masterUrl);
-      }
-      
       if (response.ok) {
+        blob = await response.blob();
         break;
       }
     } catch (e) {
-      lastError = e;
+      console.warn(`Failed to fetch ${branch} branch:`, e);
       continue;
     }
   }
 
-  if (!response || !response.ok) {
-    throw new Error(`Failed to download repository. Please try uploading as a ZIP file instead. ${lastError?.message || ''}`);
+  if (!blob) {
+    throw new Error('Failed to download repository. Please try uploading as a ZIP file instead.');
   }
 
-  const blob = await response.blob();
   return extractZipFromFile(blob);
 }
 
@@ -401,7 +394,7 @@ async function submitQuery() {
     const messages = [
       {
         role: 'system',
-        content: 'You are a helpful code assistant. Answer questions about the codebase based on the provided context. Be concise and accurate. Format your response in markdown with proper code blocks when showing code. Never use dashes or hyphens for lists or formatting, use bullet points or numbers instead.'
+        content: 'You are a helpful code assistant. Answer questions about the codebase based on the provided context. Be concise and accurate. Format your response in markdown with proper code blocks when showing code. IMPORTANT: Never use hyphens or dashes for lists or formatting. Always use bullet points (•) or numbers (1., 2., 3.) instead. Do not use the dash character at all in your responses.'
       },
       {
         role: 'user',
